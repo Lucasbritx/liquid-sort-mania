@@ -129,14 +129,21 @@ const TopBar = memo(function TopBar({
 }: TopBarProps) {
   return (
     <header className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-      {/* Level and moves info */}
-      <div className="flex flex-col">
-        <h1 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">
-          Level {level}
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Moves: {moves}
-        </p>
+      {/* Logo and level info */}
+      <div className="flex items-center gap-3">
+        <img 
+          src="/logo.jpg" 
+          alt="Liquid Sort Mania" 
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-md object-cover"
+        />
+        <div className="flex flex-col">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">
+            Level {level}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Moves: {moves}
+          </p>
+        </div>
       </div>
       
       {/* Action buttons */}

@@ -137,9 +137,13 @@ const WinModal = memo(function WinModal({
           ${isVisible ? 'scale-100 translate-y-0' : 'scale-90 translate-y-8'}
         `}
       >
-        {/* Trophy icon */}
+        {/* Logo */}
         <div className="mb-4">
-          <span className="text-6xl">🏆</span>
+          <img 
+            src="/logo.jpg" 
+            alt="Liquid Sort Mania" 
+            className="w-20 h-20 mx-auto rounded-2xl shadow-lg object-cover"
+          />
         </div>
         
         {/* Title */}
