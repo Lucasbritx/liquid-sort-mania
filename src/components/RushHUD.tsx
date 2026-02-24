@@ -11,6 +11,7 @@ import type { RushState, RushModeConfig } from '../types';
 interface RushHUDProps {
   rushState: RushState;
   config: RushModeConfig;
+  highScore?: number;
   onTimeUp: () => void;
   isPaused?: boolean;
 }
@@ -18,6 +19,7 @@ interface RushHUDProps {
 const RushHUD = memo(function RushHUD({
   rushState,
   config,
+  highScore = 0,
   onTimeUp,
   isPaused = false,
 }: RushHUDProps) {
@@ -66,6 +68,11 @@ const RushHUD = memo(function RushHUD({
         <span className="text-xl font-bold text-gray-800 dark:text-white tabular-nums">
           {rushState.score.toLocaleString()}
         </span>
+        {highScore > 0 && (
+          <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+            Best: {highScore.toLocaleString()}
+          </span>
+        )}
       </div>
       
       {/* Timer */}

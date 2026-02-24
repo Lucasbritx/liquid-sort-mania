@@ -14,6 +14,7 @@ interface GameOverModalProps {
   level: number;
   reason: 'time_up' | 'corrupted' | 'stuck';
   rushState?: RushState;
+  highScore?: number;
   onRestart: () => void;
   onChangeMode: () => void;
 }
@@ -23,6 +24,7 @@ const GameOverModal = memo(function GameOverModal({
   level,
   reason,
   rushState,
+  highScore = 0,
   onRestart,
   onChangeMode,
 }: GameOverModalProps) {
@@ -64,6 +66,8 @@ const GameOverModal = memo(function GameOverModal({
     }
   };
   
+  const isNewHighScore = mode === 'rush' && rushState && rushState.score > highScore;
+  
   const bgColor = reason === 'corrupted' 
     ? 'from-purple-900/50 via-red-900/50 to-purple-900/50' 
     : 'from-gray-900/50 via-gray-800/50 to-gray-900/50';
@@ -96,6 +100,13 @@ const GameOverModal = memo(function GameOverModal({
       >
         {/* Icon */}
         <div className="text-6xl mb-4">{getIcon()}</div>
+        
+        {/* New High Score Badge */}
+        {isNewHighScore && (
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-3 bg-yellow-500/20 border border-yellow-500/50 rounded-full">
+            <span className="text-yellow-400 text-sm font-bold animate-pulse">NEW HIGH SCORE!</span>
+          </div>
+        )}
         
         {/* Title */}
         <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">

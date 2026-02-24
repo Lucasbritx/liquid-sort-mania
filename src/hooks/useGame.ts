@@ -4,6 +4,7 @@
  * React hook wrapping GameEngine with advanced mechanics
  * Supports: Classic, Zen, and Rush modes
  * Handles weighted, frozen, corrupted, and mutable liquids
+ * Saves progress per mode to localStorage
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -26,6 +27,15 @@ interface AnimationState {
   isAnimating: boolean;
 }
 
+/**
+ * Progress data saved per mode
+ */
+interface ModeProgress {
+  classic: { level: number };
+  zen: { level: number };
+  rush: { highScore: number; bestLevel: number };
+}
+
 interface UseGameReturn {
   // State
   bottles: GameState;
@@ -40,6 +50,7 @@ interface UseGameReturn {
   mode: GameMode;
   rushState?: RushState;
   mechanics: LevelMechanics;
+  highScores: { classic: number; zen: number; rush: number };
   
   // Actions
   selectBottle: (index: number) => void;
@@ -51,6 +62,44 @@ interface UseGameReturn {
   setMode: (mode: GameMode) => void;
   updateTimer: (delta: number) => void;
   onTimeUp: () => void;
+}
+
+/**
+ * Load progress from localStorage
+ */
+function loadProgress(): ModeProgress {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.HIGH_SCORES);
+    if (saved) {
+      const data = JSON.parse(saved) as ModeProgress;
+      return {
+        classic: { level: data.classic?.level || 1 },
+        zen: { level: data.zen?.level || 1 },
+        rush: { 
+          highScore: data.rush?.highScore || 0, 
+          bestLevel: data.rush?.bestLevel || 1 
+        },
+      };
+    }
+  } catch {
+    console.warn('Failed to load progress');
+  }
+  return {
+    classic: { level: 1 },
+    zen: { level: 1 },
+    rush: { highScore: 0, bestLevel: 1 },
+  };
+}
+
+/**
+ * Save progress to localStorage
+ */
+function saveProgress(progress: ModeProgress): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.HIGH_SCORES, JSON.stringify(progress));
+  } catch {
+    console.warn('Failed to save progress');
+  }
 }
 
 /**
@@ -84,23 +133,19 @@ function saveGameData(data: GameData): void {
 }
 
 /**
- * Create initial game data
- */
-function createInitialGameData(level: number = 1, mode: GameMode = 'classic'): GameData {
-  return createGame(level, mode);
-}
-
-/**
  * Main game hook with advanced mechanics
  */
 export function useGame(): UseGameReturn {
+  // Load progress
+  const [progress, setProgress] = useState<ModeProgress>(loadProgress);
+  
   // Initialize from localStorage or create new game
   const [gameData, setGameData] = useState<GameData>(() => {
     const saved = loadGameData();
     if (saved && saved.mode) {
       return saved;
     }
-    return createInitialGameData(1, 'classic');
+    return createGame(1, 'classic');
   });
   
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -121,6 +166,67 @@ export function useGame(): UseGameReturn {
   useEffect(() => {
     saveGameData(gameData);
   }, [gameData]);
+  
+  // Save progress whenever it changes
+  useEffect(() => {
+    saveProgress(progress);
+  }, [progress]);
+  
+  // Update progress when level is won
+  useEffect(() => {
+    if (gameData.isWin) {
+      setProgress(prev => {
+        const newProgress = { ...prev };
+        
+        if (gameData.mode === 'classic') {
+          // Save highest level reached in classic
+          if (gameData.level >= prev.classic.level) {
+            newProgress.classic = { level: gameData.level + 1 };
+          }
+        } else if (gameData.mode === 'zen') {
+          // Save highest level reached in zen
+          if (gameData.level >= prev.zen.level) {
+            newProgress.zen = { level: gameData.level + 1 };
+          }
+        } else if (gameData.mode === 'rush' && gameData.rushState) {
+          // Save high score and best level for rush
+          const currentScore = gameData.rushState.score;
+          if (currentScore > prev.rush.highScore) {
+            newProgress.rush = { 
+              highScore: currentScore,
+              bestLevel: Math.max(prev.rush.bestLevel, gameData.level),
+            };
+          } else if (gameData.level > prev.rush.bestLevel) {
+            newProgress.rush = {
+              ...prev.rush,
+              bestLevel: gameData.level,
+            };
+          }
+        }
+        
+        return newProgress;
+      });
+    }
+  }, [gameData.isWin, gameData.level, gameData.mode, gameData.rushState]);
+  
+  // Also save rush high score on game over (time up)
+  useEffect(() => {
+    if (gameData.isGameOver && gameData.mode === 'rush' && gameData.rushState) {
+      setProgress(prev => {
+        const currentScore = gameData.rushState!.score;
+        if (currentScore > prev.rush.highScore) {
+          return {
+            ...prev,
+            rush: {
+              highScore: currentScore,
+              bestLevel: Math.max(prev.rush.bestLevel, gameData.level),
+            },
+          };
+        }
+        return prev;
+      });
+    }
+  }, [gameData.isGameOver, gameData.mode, gameData.rushState, gameData.level]);
   
   // Cleanup animation timeout on unmount
   useEffect(() => {
@@ -374,13 +480,22 @@ export function useGame(): UseGameReturn {
   }, [gameData.mode]);
   
   /**
-   * Change game mode
+   * Change game mode - load saved progress for that mode
    */
   const setMode = useCallback((mode: GameMode) => {
-    setGameData(createGame(1, mode));
+    // Get saved level for this mode
+    let startLevel = 1;
+    if (mode === 'classic') {
+      startLevel = progress.classic.level;
+    } else if (mode === 'zen') {
+      startLevel = progress.zen.level;
+    }
+    // Rush always starts at level 1
+    
+    setGameData(createGame(startLevel, mode));
     setSelectedIndex(null);
     setGameOverReason(null);
-  }, []);
+  }, [progress]);
   
   /**
    * Update timer (for Rush mode)
@@ -413,6 +528,13 @@ export function useGame(): UseGameReturn {
     setGameData(prev => ({ ...prev, isGameOver: true }));
   }, [gameData.mode]);
   
+  // Compute high scores for display
+  const highScores = {
+    classic: progress.classic.level,
+    zen: progress.zen.level,
+    rush: progress.rush.highScore,
+  };
+  
   return {
     bottles: gameData.bottles,
     selectedIndex,
@@ -426,6 +548,7 @@ export function useGame(): UseGameReturn {
     mode: gameData.mode,
     rushState: gameData.rushState,
     mechanics,
+    highScores,
     selectBottle,
     pourBottle,
     undo,

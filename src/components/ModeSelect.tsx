@@ -43,7 +43,7 @@ const ModeCard = memo(function ModeCard({
     <button
       onClick={onClick}
       className={`
-        w-full p-4 rounded-2xl
+        w-full p-3 rounded-2xl
         bg-white dark:bg-gray-800
         border-2 border-transparent
         shadow-lg hover:shadow-xl
@@ -55,42 +55,34 @@ const ModeCard = memo(function ModeCard({
       `}
     >
       {/* Header */}
-      <div className="flex items-center gap-3 mb-3">
-        <span className="text-3xl">{icon}</span>
-        <div>
-          <h3 className="text-lg font-bold text-gray-800 dark:text-white">
-            {title}
-          </h3>
+      <div className="flex items-center gap-3 mb-2">
+        <span className="text-2xl">{icon}</span>
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-gray-800 dark:text-white">
+              {title}
+            </h3>
+            {/* High Score inline */}
+            {highScore !== undefined && highScore > 0 && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {highScoreLabel}: <span className="font-bold text-gray-700 dark:text-gray-200">{highScore}</span>
+              </span>
+            )}
+          </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {description}
           </p>
         </div>
       </div>
       
-      {/* Features */}
-      <ul className="space-y-1 mb-3">
-        {features.map((feature, i) => (
-          <li key={i} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50" />
+      {/* Features - horizontal on larger screens */}
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {features.slice(0, 3).map((feature, i) => (
+          <span key={i} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+            <span className="w-1 h-1 rounded-full bg-current opacity-50" />
             {feature}
-          </li>
+          </span>
         ))}
-      </ul>
-      
-      {/* High Score */}
-      {highScore !== undefined && highScore > 0 && (
-        <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {highScoreLabel}: <span className="font-bold text-gray-700 dark:text-gray-200">{highScore}</span>
-          </p>
-        </div>
-      )}
-      
-      {/* Play button indicator */}
-      <div className="mt-3 flex justify-end">
-        <span className="text-sm font-medium text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
-          Play →
-        </span>
       </div>
     </button>
   );
@@ -101,15 +93,15 @@ const ModeSelect = memo(function ModeSelect({
   highScores,
 }: ModeSelectProps) {
   return (
-    <div className="min-h-full flex flex-col bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-50 dark:from-gray-900 dark:via-slate-900 dark:to-gray-800">
-      {/* Header */}
-      <div className="pt-8 pb-4 px-4 text-center">
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-50 dark:from-gray-900 dark:via-slate-900 dark:to-gray-800 overflow-hidden">
+      {/* Header - Fixed */}
+      <div className="flex-shrink-0 pt-6 pb-3 px-4 text-center">
         <img 
           src="/logo.jpg" 
           alt="Liquid Sort Mania" 
-          className="w-20 h-20 mx-auto rounded-2xl shadow-lg object-cover mb-4"
+          className="w-16 h-16 mx-auto rounded-2xl shadow-lg object-cover mb-3"
         />
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-1">
+        <h1 className="text-xl font-bold text-gray-800 dark:text-white mb-1">
           Liquid Sort Mania
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -117,8 +109,8 @@ const ModeSelect = memo(function ModeSelect({
         </p>
       </div>
       
-      {/* Mode Cards */}
-      <div className="flex-1 px-4 pb-8 space-y-4 max-w-md mx-auto w-full">
+      {/* Mode Cards - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-3 max-w-md mx-auto w-full">
         <ModeCard
           mode="classic"
           title="Classic"
@@ -171,8 +163,8 @@ const ModeSelect = memo(function ModeSelect({
         />
       </div>
       
-      {/* Footer */}
-      <footer className="px-4 py-4 text-center">
+      {/* Footer - Fixed */}
+      <footer className="flex-shrink-0 px-4 py-3 text-center">
         <p className="text-xs text-gray-400 dark:text-gray-500">
           Created with OpenCode + Claude Opus 4.5
         </p>

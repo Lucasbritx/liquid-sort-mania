@@ -42,6 +42,7 @@ function App() {
     animationState,
     mode,
     rushState,
+    highScores,
     selectBottle,
     pourBottle,
     undo,
@@ -215,7 +216,7 @@ function App() {
 
   // Show mode selection screen
   if (showModeSelect) {
-    return <ModeSelect onSelectMode={handleSelectMode} />;
+    return <ModeSelect onSelectMode={handleSelectMode} highScores={highScores} />;
   }
 
   return (
@@ -247,6 +248,7 @@ function App() {
         <RushHUD
           rushState={rushState}
           config={MODE_CONFIGS.rush as RushModeConfig}
+          highScore={highScores.rush}
           onTimeUp={onTimeUp}
           isPaused={isWin || isGameOver}
         />
@@ -291,6 +293,7 @@ function App() {
           level={level}
           reason={gameOverReason}
           rushState={rushState}
+          highScore={highScores.rush}
           onRestart={handleRestart}
           onChangeMode={handleBackToModeSelect}
         />
