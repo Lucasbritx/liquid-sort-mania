@@ -2,9 +2,11 @@
  * TopBar.tsx
  * 
  * Top navigation bar with level info, undo, restart, and settings
+ * Shows current mode indicator and back to menu button
  */
 
 import React, { memo } from 'react';
+import type { GameMode } from '../types';
 
 interface TopBarProps {
   level: number;
@@ -12,10 +14,12 @@ interface TopBarProps {
   canUndo: boolean;
   isDarkMode: boolean;
   isSoundEnabled: boolean;
+  mode?: GameMode;
   onUndo: () => void;
   onRestart: () => void;
   onToggleDarkMode: () => void;
   onToggleSound: () => void;
+  onBackToMenu?: () => void;
 }
 
 /**
@@ -55,6 +59,25 @@ const IconButton = memo(function IconButton({
     </button>
   );
 });
+
+/**
+ * Back arrow icon
+ */
+const BackIcon = () => (
+  <svg
+    className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-200"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M15 19l-7-7 7-7"
+    />
+  </svg>
+);
 
 /**
  * Undo icon SVG
@@ -147,33 +170,90 @@ const SoundOffIcon = () => (
   </svg>
 );
 
+/**
+ * Get mode badge configuration
+ */
+const getModeConfig = (mode: GameMode) => {
+  switch (mode) {
+    case 'zen':
+      return {
+        label: 'Zen',
+        icon: '🧘',
+        bgColor: 'bg-emerald-100 dark:bg-emerald-900/50',
+        textColor: 'text-emerald-700 dark:text-emerald-300',
+      };
+    case 'rush':
+      return {
+        label: 'Rush',
+        icon: '⚡',
+        bgColor: 'bg-red-100 dark:bg-red-900/50',
+        textColor: 'text-red-700 dark:text-red-300',
+      };
+    default:
+      return {
+        label: 'Classic',
+        icon: '🎯',
+        bgColor: 'bg-blue-100 dark:bg-blue-900/50',
+        textColor: 'text-blue-700 dark:text-blue-300',
+      };
+  }
+};
+
 const TopBar = memo(function TopBar({
   level,
   moves,
   canUndo,
   isDarkMode,
   isSoundEnabled,
+  mode = 'classic',
   onUndo,
   onRestart,
   onToggleDarkMode,
   onToggleSound,
+  onBackToMenu,
 }: TopBarProps) {
+  const modeConfig = getModeConfig(mode);
+  
   return (
     <header className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-      {/* Logo and level info */}
-      <div className="flex items-center gap-3">
+      {/* Logo, mode badge, and level info */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Back to menu button */}
+        {onBackToMenu && (
+          <IconButton
+            onClick={onBackToMenu}
+            label="Back to mode selection"
+          >
+            <BackIcon />
+          </IconButton>
+        )}
+        
+        {/* Logo */}
         <img 
           src="/logo.jpg" 
           alt="Liquid Sort Mania" 
           className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl shadow-md object-cover"
         />
+        
         <div className="flex flex-col">
-          <h1 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">
-            Level {level}
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Moves: {moves}
-          </p>
+          {/* Mode badge */}
+          <div className={`
+            inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mb-0.5
+            ${modeConfig.bgColor} ${modeConfig.textColor}
+          `}>
+            <span>{modeConfig.icon}</span>
+            <span>{modeConfig.label}</span>
+          </div>
+          
+          {/* Level and moves */}
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-base sm:text-lg font-bold text-gray-800 dark:text-white">
+              Level {level}
+            </h1>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {moves} moves
+            </span>
+          </div>
         </div>
       </div>
       

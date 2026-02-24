@@ -1,19 +1,23 @@
 /**
  * useGame.ts
  * 
- * React hook wrapping GameEngine
- * Manages game state with React, handles animations, and exposes game actions
+ * React hook wrapping GameEngine with advanced mechanics
+ * Supports: Classic, Zen, and Rush modes
+ * Handles weighted, frozen, corrupted, and mutable liquids
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { GameState, GameData } from '../types';
+import type { GameState, GameData, GameMode, RushState, RushModeConfig, LevelMechanics } from '../types';
 import { STORAGE_KEYS } from '../types';
 import {
   createGame,
   executePour,
   undoMove,
   checkWin,
-  isValidPour,
+  validatePour,
+  processTurnMechanics,
+  updateRushScore,
+  getLevelConfig,
 } from '../engine/GameEngine';
 
 interface AnimationState {
@@ -29,8 +33,13 @@ interface UseGameReturn {
   moves: number;
   level: number;
   isWin: boolean;
+  isGameOver: boolean;
+  gameOverReason: 'time_up' | 'corrupted' | 'stuck' | null;
   canUndo: boolean;
   animationState: AnimationState;
+  mode: GameMode;
+  rushState?: RushState;
+  mechanics: LevelMechanics;
   
   // Actions
   selectBottle: (index: number) => void;
@@ -39,6 +48,9 @@ interface UseGameReturn {
   restart: () => void;
   nextLevel: () => void;
   goToLevel: (level: number) => void;
+  setMode: (mode: GameMode) => void;
+  updateTimer: (delta: number) => void;
+  onTimeUp: () => void;
 }
 
 /**
@@ -72,22 +84,23 @@ function saveGameData(data: GameData): void {
 }
 
 /**
- * Main game hook
+ * Create initial game data
+ */
+function createInitialGameData(level: number = 1, mode: GameMode = 'classic'): GameData {
+  return createGame(level, mode);
+}
+
+/**
+ * Main game hook with advanced mechanics
  */
 export function useGame(): UseGameReturn {
   // Initialize from localStorage or create new game
   const [gameData, setGameData] = useState<GameData>(() => {
     const saved = loadGameData();
-    if (saved) {
+    if (saved && saved.mode) {
       return saved;
     }
-    return {
-      bottles: createGame(1),
-      moves: 0,
-      undoStack: [],
-      level: 1,
-      isWin: false,
-    };
+    return createInitialGameData(1, 'classic');
   });
   
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -96,9 +109,13 @@ export function useGame(): UseGameReturn {
     toIndex: null,
     isAnimating: false,
   });
+  const [gameOverReason, setGameOverReason] = useState<'time_up' | 'corrupted' | 'stuck' | null>(null);
   
   // Ref to track animation timeout
   const animationTimeoutRef = useRef<number | null>(null);
+  
+  // Get current level mechanics
+  const mechanics = getLevelConfig(gameData.level, gameData.mode).mechanics || {};
   
   // Save to localStorage whenever game data changes
   useEffect(() => {
@@ -121,8 +138,8 @@ export function useGame(): UseGameReturn {
     // Ignore during animation
     if (animationState.isAnimating) return;
     
-    // Ignore if game is won
-    if (gameData.isWin) return;
+    // Ignore if game is won or over
+    if (gameData.isWin || gameData.isGameOver) return;
     
     // If no bottle selected, select this one
     if (selectedIndex === null) {
@@ -142,7 +159,17 @@ export function useGame(): UseGameReturn {
     const source = gameData.bottles[selectedIndex];
     const target = gameData.bottles[index];
     
-    if (!isValidPour(source, target)) {
+    const validation = validatePour(source, target, mechanics);
+    
+    if (!validation.valid) {
+      // Check for game over (corrupted failure)
+      if (validation.gameOver) {
+        setGameOverReason('corrupted');
+        setGameData(prev => ({ ...prev, isGameOver: true }));
+        setSelectedIndex(null);
+        return;
+      }
+      
       // Invalid pour - if clicked bottle has liquid, select it instead
       if (target.length > 0) {
         setSelectedIndex(index);
@@ -157,9 +184,15 @@ export function useGame(): UseGameReturn {
       isAnimating: true,
     });
     
-    // Execute pour after brief delay for animation
-    const pourResult = executePour(gameData.bottles, selectedIndex, index);
-    if (!pourResult) {
+    // Execute pour
+    const pourResult = executePour(gameData.bottles, selectedIndex, index, mechanics);
+    
+    if (!pourResult.success) {
+      // Check for corrupted failure
+      if (pourResult.gameOver) {
+        setGameOverReason('corrupted');
+        setGameData(prev => ({ ...prev, isGameOver: true }));
+      }
       setAnimationState({ fromIndex: null, toIndex: null, isAnimating: false });
       setSelectedIndex(null);
       return;
@@ -167,21 +200,37 @@ export function useGame(): UseGameReturn {
     
     // Update state after animation
     animationTimeoutRef.current = window.setTimeout(() => {
-      const isWin = checkWin(pourResult.newState);
+      // Process turn-based mechanics (frozen countdown, mutations)
+      const processedState = processTurnMechanics(pourResult.newState!, mechanics);
+      const isWin = checkWin(processedState);
       
-      setGameData(prev => ({
-        ...prev,
-        bottles: pourResult.newState,
-        moves: prev.moves + 1,
-        undoStack: [...prev.undoStack, pourResult.move],
-        isWin,
-      }));
+      setGameData(prev => {
+        const newData: GameData = {
+          ...prev,
+          bottles: processedState,
+          moves: prev.moves + 1,
+          undoStack: [...prev.undoStack, pourResult.move!],
+          isWin,
+          globalMoveCount: prev.globalMoveCount + 1,
+        };
+        
+        // Update rush score
+        if (prev.mode === 'rush' && prev.rushState) {
+          newData.rushState = updateRushScore(
+            prev.rushState,
+            prev.modeConfig as RushModeConfig,
+            true
+          );
+        }
+        
+        return newData;
+      });
       
       setAnimationState({ fromIndex: null, toIndex: null, isAnimating: false });
       setSelectedIndex(null);
     }, 350);
     
-  }, [selectedIndex, gameData, animationState.isAnimating]);
+  }, [selectedIndex, gameData, animationState.isAnimating, mechanics]);
   
   /**
    * Direct pour from one bottle to another (for drag & drop)
@@ -190,14 +239,23 @@ export function useGame(): UseGameReturn {
     // Ignore during animation
     if (animationState.isAnimating) return;
     
-    // Ignore if game is won
-    if (gameData.isWin) return;
+    // Ignore if game is won or over
+    if (gameData.isWin || gameData.isGameOver) return;
     
     // Validate pour
     const source = gameData.bottles[fromIndex];
     const target = gameData.bottles[toIndex];
     
-    if (!isValidPour(source, target)) return;
+    const validation = validatePour(source, target, mechanics);
+    
+    if (!validation.valid) {
+      // Check for game over (corrupted failure)
+      if (validation.gameOver) {
+        setGameOverReason('corrupted');
+        setGameData(prev => ({ ...prev, isGameOver: true }));
+      }
+      return;
+    }
     
     // Clear any selection
     setSelectedIndex(null);
@@ -210,27 +268,48 @@ export function useGame(): UseGameReturn {
     });
     
     // Execute pour
-    const pourResult = executePour(gameData.bottles, fromIndex, toIndex);
-    if (!pourResult) {
+    const pourResult = executePour(gameData.bottles, fromIndex, toIndex, mechanics);
+    
+    if (!pourResult.success) {
+      if (pourResult.gameOver) {
+        setGameOverReason('corrupted');
+        setGameData(prev => ({ ...prev, isGameOver: true }));
+      }
       setAnimationState({ fromIndex: null, toIndex: null, isAnimating: false });
       return;
     }
     
     // Update state after animation
     animationTimeoutRef.current = window.setTimeout(() => {
-      const isWin = checkWin(pourResult.newState);
+      // Process turn-based mechanics
+      const processedState = processTurnMechanics(pourResult.newState!, mechanics);
+      const isWin = checkWin(processedState);
       
-      setGameData(prev => ({
-        ...prev,
-        bottles: pourResult.newState,
-        moves: prev.moves + 1,
-        undoStack: [...prev.undoStack, pourResult.move],
-        isWin,
-      }));
+      setGameData(prev => {
+        const newData: GameData = {
+          ...prev,
+          bottles: processedState,
+          moves: prev.moves + 1,
+          undoStack: [...prev.undoStack, pourResult.move!],
+          isWin,
+          globalMoveCount: prev.globalMoveCount + 1,
+        };
+        
+        // Update rush score
+        if (prev.mode === 'rush' && prev.rushState) {
+          newData.rushState = updateRushScore(
+            prev.rushState,
+            prev.modeConfig as RushModeConfig,
+            true
+          );
+        }
+        
+        return newData;
+      });
       
       setAnimationState({ fromIndex: null, toIndex: null, isAnimating: false });
     }, 350);
-  }, [gameData, animationState.isAnimating]);
+  }, [gameData, animationState.isAnimating, mechanics]);
   
   /**
    * Undo last move
@@ -238,17 +317,28 @@ export function useGame(): UseGameReturn {
   const undo = useCallback(() => {
     if (animationState.isAnimating) return;
     if (gameData.undoStack.length === 0) return;
+    if (gameData.isGameOver) return;
     
     const lastMove = gameData.undoStack[gameData.undoStack.length - 1];
     const newState = undoMove(gameData.bottles, lastMove);
     
-    setGameData(prev => ({
-      ...prev,
-      bottles: newState,
-      moves: prev.moves + 1, // Undo also counts as a move
-      undoStack: prev.undoStack.slice(0, -1),
-      isWin: false,
-    }));
+    setGameData(prev => {
+      const newData: GameData = {
+        ...prev,
+        bottles: newState,
+        moves: prev.moves + 1,
+        undoStack: prev.undoStack.slice(0, -1),
+        isWin: false,
+        globalMoveCount: prev.globalMoveCount + 1,
+      };
+      
+      // Reset combo on undo in rush mode
+      if (prev.mode === 'rush' && prev.rushState) {
+        newData.rushState = { ...prev.rushState, combo: 0 };
+      }
+      
+      return newData;
+    });
     
     setSelectedIndex(null);
   }, [gameData, animationState.isAnimating]);
@@ -259,15 +349,9 @@ export function useGame(): UseGameReturn {
   const restart = useCallback(() => {
     if (animationState.isAnimating) return;
     
-    setGameData(prev => ({
-      bottles: createGame(prev.level),
-      moves: 0,
-      undoStack: [],
-      level: prev.level,
-      isWin: false,
-    }));
-    
+    setGameData(prev => createGame(prev.level, prev.mode));
     setSelectedIndex(null);
+    setGameOverReason(null);
   }, [animationState.isAnimating]);
   
   /**
@@ -275,32 +359,59 @@ export function useGame(): UseGameReturn {
    */
   const nextLevel = useCallback(() => {
     const newLevel = gameData.level + 1;
-    
-    setGameData({
-      bottles: createGame(newLevel),
-      moves: 0,
-      undoStack: [],
-      level: newLevel,
-      isWin: false,
-    });
-    
+    setGameData(createGame(newLevel, gameData.mode));
     setSelectedIndex(null);
-  }, [gameData.level]);
+    setGameOverReason(null);
+  }, [gameData.level, gameData.mode]);
   
   /**
    * Go to specific level
    */
   const goToLevel = useCallback((level: number) => {
-    setGameData({
-      bottles: createGame(level),
-      moves: 0,
-      undoStack: [],
-      level,
-      isWin: false,
-    });
-    
+    setGameData(createGame(level, gameData.mode));
     setSelectedIndex(null);
+    setGameOverReason(null);
+  }, [gameData.mode]);
+  
+  /**
+   * Change game mode
+   */
+  const setMode = useCallback((mode: GameMode) => {
+    setGameData(createGame(1, mode));
+    setSelectedIndex(null);
+    setGameOverReason(null);
   }, []);
+  
+  /**
+   * Update timer (for Rush mode)
+   */
+  const updateTimer = useCallback((delta: number) => {
+    if (gameData.mode !== 'rush' || !gameData.rushState) return;
+    if (gameData.isWin || gameData.isGameOver) return;
+    
+    setGameData(prev => {
+      if (!prev.rushState) return prev;
+      
+      const newTime = Math.max(0, prev.rushState.timeRemaining - delta);
+      
+      return {
+        ...prev,
+        rushState: {
+          ...prev.rushState,
+          timeRemaining: newTime,
+        },
+      };
+    });
+  }, [gameData.mode, gameData.rushState, gameData.isWin, gameData.isGameOver]);
+  
+  /**
+   * Handle time up (for Rush mode)
+   */
+  const onTimeUp = useCallback(() => {
+    if (gameData.mode !== 'rush') return;
+    setGameOverReason('time_up');
+    setGameData(prev => ({ ...prev, isGameOver: true }));
+  }, [gameData.mode]);
   
   return {
     bottles: gameData.bottles,
@@ -308,14 +419,22 @@ export function useGame(): UseGameReturn {
     moves: gameData.moves,
     level: gameData.level,
     isWin: gameData.isWin,
+    isGameOver: gameData.isGameOver,
+    gameOverReason,
     canUndo: gameData.undoStack.length > 0,
     animationState,
+    mode: gameData.mode,
+    rushState: gameData.rushState,
+    mechanics,
     selectBottle,
     pourBottle,
     undo,
     restart,
     nextLevel,
     goToLevel,
+    setMode,
+    updateTimer,
+    onTimeUp,
   };
 }
 

@@ -1,13 +1,13 @@
 /**
  * Bottle.tsx
  * 
- * Visual representation of a liquid bottle
- * Handles selection state, pour animations, and drag & drop
+ * Visual representation of a liquid bottle with advanced mechanics
+ * Supports: weighted, frozen, corrupted, and mutable liquids
  */
 
 import { memo, useMemo } from 'react';
-import type { Bottle as BottleType, LiquidColor } from '../types';
-import { COLOR_MAP } from '../engine/GameEngine';
+import type { Bottle as BottleType, LiquidLayer as LiquidLayerType } from '../types';
+import { COLOR_MAP, getLayerWeight, isLayerFrozen, isLayerCorrupted, isLayerMutable } from '../engine/GameEngine';
 
 interface BottleProps {
   bottle: BottleType;
@@ -17,34 +17,42 @@ interface BottleProps {
   isPouringOut: boolean;
   isPouringIn: boolean;
   isDragging: boolean;
+  isInvalidTarget?: boolean;
+  showWeights?: boolean;
   onClick: () => void;
 }
 
 /**
  * Get CSS color for a liquid layer
  */
-function getLiquidColor(color: LiquidColor): string {
-  return COLOR_MAP[color];
+function getLiquidColor(layer: LiquidLayerType): string {
+  return COLOR_MAP[layer.color];
 }
 
 /**
- * Individual liquid layer component
+ * Individual liquid layer component with modifier visuals
  */
 const LiquidLayer = memo(function LiquidLayer({
-  color,
+  layer,
   index,
   isPouringOut,
   isPouringIn,
   totalLayers,
+  showWeight,
 }: {
-  color: LiquidColor;
+  layer: LiquidLayerType;
   index: number;
   isPouringOut: boolean;
   isPouringIn: boolean;
   totalLayers: number;
+  showWeight?: boolean;
 }) {
-  const bgColor = getLiquidColor(color);
+  const bgColor = getLiquidColor(layer);
   const isTopLayer = index === totalLayers - 1;
+  const isFrozen = isLayerFrozen(layer);
+  const isCorrupted = isLayerCorrupted(layer);
+  const isMutable = isLayerMutable(layer);
+  const weight = getLayerWeight(layer);
   
   // Only animate the top layer during pour
   const animationClass = isTopLayer
@@ -62,6 +70,9 @@ const LiquidLayer = memo(function LiquidLayer({
         absolute left-1 right-1
         transition-all duration-200
         ${animationClass}
+        ${isFrozen ? 'frozen-layer' : ''}
+        ${isCorrupted ? 'corrupted-layer' : ''}
+        ${isMutable ? 'mutable-layer' : ''}
       `}
       style={{
         bottom: `${index * 25}%`,
@@ -76,6 +87,52 @@ const LiquidLayer = memo(function LiquidLayer({
         className="absolute top-1 left-2 w-3 h-1 rounded-full opacity-50"
         style={{ backgroundColor: 'rgba(255,255,255,0.6)' }}
       />
+      
+      {/* Frozen overlay */}
+      {isFrozen && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-200/60 via-white/40 to-blue-200/60" />
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iMiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjMpIi8+PC9zdmc+')] opacity-50" />
+          {/* Frozen counter */}
+          {layer.modifiers?.frozenMovesLeft && (
+            <span className="relative z-10 text-[10px] font-bold text-blue-800 bg-white/80 rounded-full w-4 h-4 flex items-center justify-center shadow">
+              {layer.modifiers.frozenMovesLeft}
+            </span>
+          )}
+        </div>
+      )}
+      
+      {/* Corrupted overlay */}
+      {isCorrupted && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-black/20 to-red-900/30" />
+          <span className="relative z-10 text-sm">💀</span>
+        </div>
+      )}
+      
+      {/* Mutable indicator */}
+      {isMutable && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 animate-pulse-slow bg-gradient-to-br from-transparent via-white/10 to-transparent" />
+          <div className="relative z-10 flex flex-col items-center">
+            <span className="text-[10px]">🔄</span>
+            {layer.modifiers?.mutationMovesLeft && (
+              <span className="text-[8px] font-bold text-white drop-shadow-lg">
+                {layer.modifiers.mutationMovesLeft}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Weight indicator */}
+      {showWeight && layer.modifiers?.weight && (
+        <div className="absolute top-0 right-0 w-4 h-4 flex items-center justify-center pointer-events-none">
+          <span className="text-[8px] font-bold text-white drop-shadow-lg bg-black/30 rounded-full w-3 h-3 flex items-center justify-center">
+            {weight}
+          </span>
+        </div>
+      )}
     </div>
   );
 });
@@ -91,21 +148,24 @@ const Bottle = memo(function Bottle({
   isPouringOut,
   isPouringIn,
   isDragging,
+  isInvalidTarget,
+  showWeights,
   onClick,
 }: BottleProps) {
   // Memoize bottle content to prevent unnecessary re-renders
   const liquidLayers = useMemo(() => {
-    return bottle.map((color, layerIndex) => (
+    return bottle.map((layer, layerIndex) => (
       <LiquidLayer
-        key={`${index}-${layerIndex}-${color}`}
-        color={color}
+        key={`${index}-${layerIndex}-${layer.color}`}
+        layer={layer}
         index={layerIndex}
         isPouringOut={isPouringOut && layerIndex === bottle.length - 1}
         isPouringIn={isPouringIn && layerIndex === bottle.length - 1}
         totalLayers={bottle.length}
+        showWeight={showWeights}
       />
     ));
-  }, [bottle, index, isPouringOut, isPouringIn]);
+  }, [bottle, index, isPouringOut, isPouringIn, showWeights]);
   
   return (
     <div
@@ -121,6 +181,7 @@ const Bottle = memo(function Bottle({
         ${isSelected ? 'bottle-selected' : ''}
         ${isDragging ? 'opacity-50 scale-95 z-50' : ''}
         ${isDragOver ? 'scale-110 brightness-110' : ''}
+        ${isInvalidTarget ? 'shake-error' : ''}
       `}
       style={{
         width: 'var(--bottle-width)',
@@ -191,13 +252,26 @@ const Bottle = memo(function Bottle({
       )}
       
       {/* Drag over indicator */}
-      {isDragOver && (
+      {isDragOver && !isInvalidTarget && (
         <div
           className="
             absolute -inset-2
             rounded-2xl
             border-2 border-green-400
             bg-green-400/20
+            pointer-events-none
+          "
+        />
+      )}
+      
+      {/* Invalid target indicator */}
+      {isInvalidTarget && (
+        <div
+          className="
+            absolute -inset-2
+            rounded-2xl
+            border-2 border-red-400
+            bg-red-400/20
             pointer-events-none
           "
         />
