@@ -1,6 +1,7 @@
 # Liquid Sort Mania
 
-A production-ready mobile web game inspired by liquid sort puzzle games (like Magic Sort). Built with React, TypeScript, Vite, and Tailwind CSS.
+<img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/48aed204-c4ce-4e82-bf38-6e36e73dd7b0" />
+A mobile web game inspired by liquid sort puzzle games (like Magic Sort). Built with React, TypeScript, Vite, and Tailwind CSS.
 
 ![Game Preview](https://img.shields.io/badge/Platform-Mobile%20Web-blue) ![React](https://img.shields.io/badge/React-18.3-61dafb) ![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178c6) ![Tailwind](https://img.shields.io/badge/Tailwind-3.4-38bdf8)
 
