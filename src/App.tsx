@@ -5,10 +5,13 @@
  * Integrates all game components and manages global state
  */
 
-import { useCallback, useEffect, useRef } from 'react';
-import { GameBoard, TopBar, WinModal } from './components';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { GameBoard, TopBar, WinModal, BannerAd, InterstitialAd } from './components';
 import { useGame, useDarkMode, useSound } from './hooks/useGame';
 import { soundEngine } from './engine/SoundEngine';
+
+// Show interstitial ad every N levels
+const INTERSTITIAL_INTERVAL = 3;
 
 function App() {
   // Game state and actions
@@ -32,6 +35,10 @@ function App() {
   
   // Sound state
   const [isSoundEnabled, toggleSound] = useSound();
+  
+  // Interstitial ad state
+  const [showInterstitial, setShowInterstitial] = useState(false);
+  const pendingNextLevelRef = useRef(false);
   
   // Track previous win state to play sound only on transition
   const prevIsWinRef = useRef(isWin);
@@ -90,7 +97,23 @@ function App() {
   const handleNextLevel = useCallback(() => {
     soundEngine.init();
     soundEngine.play('select');
-    nextLevel();
+    
+    // Check if we should show interstitial ad (every 3 levels)
+    // Show ad after completing levels 3, 6, 9, etc.
+    if (level % INTERSTITIAL_INTERVAL === 0) {
+      pendingNextLevelRef.current = true;
+      setShowInterstitial(true);
+    } else {
+      nextLevel();
+    }
+  }, [nextLevel, level]);
+  
+  const handleCloseInterstitial = useCallback(() => {
+    setShowInterstitial(false);
+    if (pendingNextLevelRef.current) {
+      pendingNextLevelRef.current = false;
+      nextLevel();
+    }
   }, [nextLevel]);
   
   return (
@@ -126,11 +149,15 @@ function App() {
       />
       
       {/* Instructions footer */}
-      <footer className="px-4 py-3 text-center">
+      <footer className="px-4 py-2 text-center">
         <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
           Tap or drag bottles to pour
         </p>
       </footer>
+      
+      {/* Banner Ad 
+      <BannerAd />
+      */}
       
       {/* Win modal */}
       {isWin && (
@@ -141,6 +168,12 @@ function App() {
           onRestart={handleRestart}
         />
       )}
+      
+      {/* Interstitial Ad (every 3 levels) */}
+      <InterstitialAd
+        isVisible={showInterstitial}
+        onClose={handleCloseInterstitial}
+      />
     </div>
   );
 }
