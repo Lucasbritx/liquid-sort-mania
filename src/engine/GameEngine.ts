@@ -636,34 +636,50 @@ export function getLevelConfig(level: number, mode: GameMode = 'classic'): Level
   let mechanics: LevelMechanics = {};
   let modifierDensity = 0;
   
-  if (level <= 3) {
+  // Color scaling - gradual increase
+  if (level <= 2) {
     numColors = 4;
-  } else if (level <= 6) {
+  } else if (level <= 4) {
     numColors = 5;
-  } else if (level <= 10) {
+  } else if (level <= 6) {
     numColors = 6;
-  } else if (level <= 15) {
+  } else if (level <= 10) {
     numColors = 7;
   } else {
     numColors = 8;
   }
   
-  // Add mechanics progressively (not in Zen mode for corrupted)
-  if (level >= 5) {
+  // Add mechanics progressively starting at level 3
+  // Level 3: Introduce weighted liquids
+  if (level >= 3) {
     mechanics.weights = true;
-    modifierDensity = 0.1;
+    modifierDensity = 0.12;
   }
-  if (level >= 8) {
+  
+  // Level 4: Add frozen liquids
+  if (level >= 4) {
     mechanics.frozen = true;
-    modifierDensity = 0.15;
-  }
-  if (level >= 12 && mode !== 'zen') {
-    mechanics.corrupted = true;
     modifierDensity = 0.18;
   }
-  if (level >= 15) {
+  
+  // Level 5: Add corrupted liquids (not in Zen mode)
+  if (level >= 5 && mode !== 'zen') {
+    mechanics.corrupted = true;
+    modifierDensity = 0.22;
+  }
+  
+  // Level 6: Add mutable liquids - full mechanics unlocked
+  if (level >= 6) {
     mechanics.mutable = true;
-    modifierDensity = 0.2;
+    modifierDensity = 0.25;
+  }
+  
+  // Scale difficulty further at higher levels
+  if (level >= 10) {
+    modifierDensity = 0.28;
+  }
+  if (level >= 15) {
+    modifierDensity = 0.30; // Cap at 30% to avoid frustration
   }
   
   // Rush mode: slightly easier but faster
