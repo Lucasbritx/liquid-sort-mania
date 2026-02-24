@@ -5,7 +5,7 @@
  * No external audio files needed - all sounds are synthesized
  */
 
-type SoundType = 'pour' | 'select' | 'drop' | 'win' | 'error';
+type SoundType = 'pour' | 'select' | 'drop' | 'win' | 'error' | 'frozen';
 
 class SoundEngine {
   private audioContext: AudioContext | null = null;
@@ -72,6 +72,9 @@ class SoundEngine {
         break;
       case 'error':
         this.playError();
+        break;
+      case 'frozen':
+        this.playFrozen();
         break;
     }
   }
@@ -248,6 +251,39 @@ class SoundEngine {
 
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + 0.2);
+  }
+
+  /**
+   * Frozen sound - icy rejection sound when trying to use frozen bottle
+   */
+  private playFrozen(): void {
+    const ctx = this.audioContext!;
+    
+    // High pitched crystalline sound
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    osc1.connect(gainNode);
+    osc2.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    // Ice-like high frequency with slight detuning
+    osc1.frequency.setValueAtTime(1800, ctx.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.15);
+    osc1.type = 'sine';
+
+    osc2.frequency.setValueAtTime(1850, ctx.currentTime);
+    osc2.frequency.exponentialRampToValueAtTime(1250, ctx.currentTime + 0.15);
+    osc2.type = 'sine';
+
+    gainNode.gain.setValueAtTime(0.12, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+
+    osc1.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.2);
+    osc2.start(ctx.currentTime);
+    osc2.stop(ctx.currentTime + 0.2);
   }
 }
 

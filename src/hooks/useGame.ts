@@ -19,6 +19,7 @@ import {
   processTurnMechanics,
   updateRushScore,
   getLevelConfig,
+  hasTopFrozenLayers,
 } from '../engine/GameEngine';
 
 interface AnimationState {
@@ -51,6 +52,7 @@ interface UseGameReturn {
   rushState?: RushState;
   mechanics: LevelMechanics;
   highScores: { classic: number; zen: number; rush: number };
+  frozenBlockIndex: number | null;
   
   // Actions
   selectBottle: (index: number) => void;
@@ -155,9 +157,11 @@ export function useGame(): UseGameReturn {
     isAnimating: false,
   });
   const [gameOverReason, setGameOverReason] = useState<'time_up' | 'corrupted' | 'stuck' | null>(null);
+  const [frozenBlockIndex, setFrozenBlockIndex] = useState<number | null>(null);
   
   // Ref to track animation timeout
   const animationTimeoutRef = useRef<number | null>(null);
+  const frozenBlockTimeoutRef = useRef<number | null>(null);
   
   // Get current level mechanics
   const mechanics = getLevelConfig(gameData.level, gameData.mode).mechanics || {};
@@ -234,7 +238,27 @@ export function useGame(): UseGameReturn {
       if (animationTimeoutRef.current) {
         clearTimeout(animationTimeoutRef.current);
       }
+      if (frozenBlockTimeoutRef.current) {
+        clearTimeout(frozenBlockTimeoutRef.current);
+      }
     };
+  }, []);
+  
+  /**
+   * Show frozen block feedback briefly
+   */
+  const showFrozenBlock = useCallback((index: number) => {
+    // Clear any existing timeout
+    if (frozenBlockTimeoutRef.current) {
+      clearTimeout(frozenBlockTimeoutRef.current);
+    }
+    
+    setFrozenBlockIndex(index);
+    
+    // Clear after animation
+    frozenBlockTimeoutRef.current = window.setTimeout(() => {
+      setFrozenBlockIndex(null);
+    }, 600);
   }, []);
   
   /**
@@ -251,6 +275,13 @@ export function useGame(): UseGameReturn {
     if (selectedIndex === null) {
       // Don't select empty bottles as source
       if (gameData.bottles[index].length === 0) return;
+      
+      // Check if top layer is frozen (and frozen mechanic is enabled)
+      if (mechanics.frozen && hasTopFrozenLayers(gameData.bottles[index])) {
+        showFrozenBlock(index);
+        return;
+      }
+      
       setSelectedIndex(index);
       return;
     }
@@ -336,7 +367,7 @@ export function useGame(): UseGameReturn {
       setSelectedIndex(null);
     }, 350);
     
-  }, [selectedIndex, gameData, animationState.isAnimating, mechanics]);
+  }, [selectedIndex, gameData, animationState.isAnimating, mechanics, showFrozenBlock]);
   
   /**
    * Direct pour from one bottle to another (for drag & drop)
@@ -348,8 +379,14 @@ export function useGame(): UseGameReturn {
     // Ignore if game is won or over
     if (gameData.isWin || gameData.isGameOver) return;
     
-    // Validate pour
+    // Check if source has frozen top layer
     const source = gameData.bottles[fromIndex];
+    if (mechanics.frozen && hasTopFrozenLayers(source)) {
+      showFrozenBlock(fromIndex);
+      return;
+    }
+    
+    // Validate pour
     const target = gameData.bottles[toIndex];
     
     const validation = validatePour(source, target, mechanics);
@@ -415,7 +452,7 @@ export function useGame(): UseGameReturn {
       
       setAnimationState({ fromIndex: null, toIndex: null, isAnimating: false });
     }, 350);
-  }, [gameData, animationState.isAnimating, mechanics]);
+  }, [gameData, animationState.isAnimating, mechanics, showFrozenBlock]);
   
   /**
    * Undo last move
@@ -549,6 +586,7 @@ export function useGame(): UseGameReturn {
     rushState: gameData.rushState,
     mechanics,
     highScores,
+    frozenBlockIndex,
     selectBottle,
     pourBottle,
     undo,

@@ -43,6 +43,7 @@ function App() {
     mode,
     rushState,
     highScores,
+    frozenBlockIndex,
     selectBottle,
     pourBottle,
     undo,
@@ -103,6 +104,13 @@ function App() {
       soundEngine.play("pour");
     }
   }, [animationState.isAnimating, animationState.fromIndex]);
+
+  // Play frozen sound when frozen bottle is clicked
+  useEffect(() => {
+    if (frozenBlockIndex !== null) {
+      soundEngine.play("frozen");
+    }
+  }, [frozenBlockIndex]);
 
   // Rush mode timer
   useEffect(() => {
@@ -259,6 +267,7 @@ function App() {
         bottles={bottles}
         selectedIndex={selectedIndex}
         animationState={animationState}
+        frozenBlockIndex={frozenBlockIndex}
         onSelectBottle={handleSelectBottle}
         onPourBottle={handlePourBottle}
       />

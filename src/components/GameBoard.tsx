@@ -18,6 +18,7 @@ interface GameBoardProps {
     toIndex: number | null;
     isAnimating: boolean;
   };
+  frozenBlockIndex: number | null;
   onSelectBottle: (index: number) => void;
   onPourBottle: (fromIndex: number, toIndex: number) => void;
 }
@@ -62,6 +63,7 @@ const GameBoard = memo(function GameBoard({
   bottles,
   selectedIndex,
   animationState,
+  frozenBlockIndex,
   onSelectBottle,
   onPourBottle,
 }: GameBoardProps) {
@@ -210,6 +212,7 @@ const GameBoard = memo(function GameBoard({
                 isSelected={selectedIndex === bottleIndex}
                 isDragOver={dragState.overIndex === bottleIndex}
                 isDragging={dragState.fromIndex === bottleIndex}
+                isBlocked={frozenBlockIndex === bottleIndex}
                 isPouringOut={
                   animationState.isAnimating && 
                   animationState.fromIndex === bottleIndex

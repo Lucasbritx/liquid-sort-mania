@@ -18,6 +18,7 @@ interface BottleProps {
   isPouringIn: boolean;
   isDragging: boolean;
   isInvalidTarget?: boolean;
+  isBlocked?: boolean;
   showWeights?: boolean;
   onClick: () => void;
 }
@@ -149,6 +150,7 @@ const Bottle = memo(function Bottle({
   isPouringIn,
   isDragging,
   isInvalidTarget,
+  isBlocked,
   showWeights,
   onClick,
 }: BottleProps) {
@@ -182,6 +184,7 @@ const Bottle = memo(function Bottle({
         ${isDragging ? 'opacity-50 scale-95 z-50' : ''}
         ${isDragOver ? 'scale-110 brightness-110' : ''}
         ${isInvalidTarget ? 'shake-error' : ''}
+        ${isBlocked ? 'frozen-block-shake' : ''}
       `}
       style={{
         width: 'var(--bottle-width)',
@@ -275,6 +278,45 @@ const Bottle = memo(function Bottle({
             pointer-events-none
           "
         />
+      )}
+      
+      {/* Frozen block overlay - shows when trying to use a frozen bottle */}
+      {isBlocked && (
+        <div
+          className="
+            absolute inset-0
+            flex items-center justify-center
+            pointer-events-none
+            z-20
+          "
+        >
+          <div className="absolute inset-0 bg-cyan-500/30 rounded-b-2xl" />
+          <div
+            className="
+              relative
+              w-10 h-10
+              flex items-center justify-center
+              bg-cyan-600
+              rounded-full
+              shadow-lg
+              border-2 border-white
+            "
+          >
+            <svg
+              className="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+              />
+            </svg>
+          </div>
+        </div>
       )}
     </div>
   );

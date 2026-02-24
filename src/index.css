@@ -355,3 +355,14 @@ body {
 .corrupted-flash {
   animation: corruptedFlash 0.5s ease-in-out;
 }
+
+/* Frozen block shake - when trying to use a frozen bottle */
+@keyframes frozenBlockShake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+  20%, 40%, 60%, 80% { transform: translateX(6px); }
+}
+
+.frozen-block-shake {
+  animation: frozenBlockShake 0.5s ease-in-out;
+}
