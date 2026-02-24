@@ -162,13 +162,6 @@ const ModeSelect = memo(function ModeSelect({
           onClick={() => onSelectMode('rush')}
         />
       </div>
-      
-      {/* Footer - Fixed */}
-      <footer className="flex-shrink-0 px-4 py-3 text-center">
-        <p className="text-xs text-gray-400 dark:text-gray-500">
-          Created with OpenCode + Claude Opus 4.5
-        </p>
-      </footer>
     </div>
   );
 });
