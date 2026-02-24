@@ -1,14 +1,20 @@
 /**
  * App.tsx
- * 
+ *
  * Main application component
  * Integrates all game components and manages global state
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { GameBoard, TopBar, WinModal, BannerAd, InterstitialAd } from './components';
-import { useGame, useDarkMode, useSound } from './hooks/useGame';
-import { soundEngine } from './engine/SoundEngine';
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  GameBoard,
+  TopBar,
+  WinModal,
+  BannerAd,
+  InterstitialAd,
+} from "./components";
+import { useGame, useDarkMode, useSound } from "./hooks/useGame";
+import { soundEngine } from "./engine/SoundEngine";
 
 // Show interstitial ad every N levels
 const INTERSTITIAL_INTERVAL = 3;
@@ -29,75 +35,81 @@ function App() {
     restart,
     nextLevel,
   } = useGame();
-  
+
   // Dark mode state
   const [isDarkMode, toggleDarkMode] = useDarkMode();
-  
+
   // Sound state
   const [isSoundEnabled, toggleSound] = useSound();
-  
+
   // Interstitial ad state
   const [showInterstitial, setShowInterstitial] = useState(false);
   const pendingNextLevelRef = useRef(false);
-  
+
   // Track previous win state to play sound only on transition
   const prevIsWinRef = useRef(isWin);
-  
+
   // Initialize sound engine and sync enabled state
   useEffect(() => {
     soundEngine.setEnabled(isSoundEnabled);
   }, [isSoundEnabled]);
-  
+
   // Play win sound when game is won
   useEffect(() => {
     if (isWin && !prevIsWinRef.current) {
-      soundEngine.play('win');
+      soundEngine.play("win");
     }
     prevIsWinRef.current = isWin;
   }, [isWin]);
-  
+
   // Play pour sound when animation starts
   useEffect(() => {
     if (animationState.isAnimating && animationState.fromIndex !== null) {
-      soundEngine.play('pour');
+      soundEngine.play("pour");
     }
   }, [animationState.isAnimating, animationState.fromIndex]);
-  
+
   // Handlers
-  const handleSelectBottle = useCallback((index: number) => {
-    // Initialize sound on first user interaction
-    soundEngine.init();
-    
-    // Play select sound if selecting a new bottle
-    if (selectedIndex === null && bottles[index].length > 0) {
-      soundEngine.play('select');
-    }
-    
-    selectBottle(index);
-  }, [selectBottle, selectedIndex, bottles]);
-  
-  const handlePourBottle = useCallback((fromIndex: number, toIndex: number) => {
-    // Initialize sound on first user interaction
-    soundEngine.init();
-    pourBottle(fromIndex, toIndex);
-  }, [pourBottle]);
-  
+  const handleSelectBottle = useCallback(
+    (index: number) => {
+      // Initialize sound on first user interaction
+      soundEngine.init();
+
+      // Play select sound if selecting a new bottle
+      if (selectedIndex === null && bottles[index].length > 0) {
+        soundEngine.play("select");
+      }
+
+      selectBottle(index);
+    },
+    [selectBottle, selectedIndex, bottles],
+  );
+
+  const handlePourBottle = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      // Initialize sound on first user interaction
+      soundEngine.init();
+      pourBottle(fromIndex, toIndex);
+    },
+    [pourBottle],
+  );
+
   const handleUndo = useCallback(() => {
     soundEngine.init();
-    soundEngine.play('drop');
+    soundEngine.play("drop");
     undo();
   }, [undo]);
-  
+
   const handleRestart = useCallback(() => {
     soundEngine.init();
-    soundEngine.play('select');
+    soundEngine.play("select");
     restart();
   }, [restart]);
-  
+
   const handleNextLevel = useCallback(() => {
     soundEngine.init();
-    soundEngine.play('select');
-    
+    soundEngine.play("select");
+
     // Check if we should show interstitial ad (every 3 levels)
     // Show ad after completing levels 3, 6, 9, etc.
     if (level % INTERSTITIAL_INTERVAL === 0) {
@@ -107,7 +119,7 @@ function App() {
       nextLevel();
     }
   }, [nextLevel, level]);
-  
+
   const handleCloseInterstitial = useCallback(() => {
     setShowInterstitial(false);
     if (pendingNextLevelRef.current) {
@@ -115,7 +127,7 @@ function App() {
       nextLevel();
     }
   }, [nextLevel]);
-  
+
   return (
     <div
       className={`
@@ -138,7 +150,7 @@ function App() {
         onToggleDarkMode={toggleDarkMode}
         onToggleSound={toggleSound}
       />
-      
+
       {/* Main game board */}
       <GameBoard
         bottles={bottles}
@@ -147,19 +159,16 @@ function App() {
         onSelectBottle={handleSelectBottle}
         onPourBottle={handlePourBottle}
       />
-      
+
       {/* Instructions footer */}
       <footer className="px-4 py-2 text-center">
         <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
           Tap or drag bottles to pour
         </p>
       </footer>
-      
-      {/* Banner Ad 
+
       <BannerAd />
-      */}
-      
-      {/* Win modal */}
+
       {isWin && (
         <WinModal
           level={level}
@@ -168,7 +177,7 @@ function App() {
           onRestart={handleRestart}
         />
       )}
-      
+
       {/* Interstitial Ad (every 3 levels) */}
       <InterstitialAd
         isVisible={showInterstitial}
