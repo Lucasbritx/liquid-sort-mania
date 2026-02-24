@@ -352,3 +352,30 @@ export function useDarkMode(): [boolean, () => void] {
   
   return [isDark, toggle];
 }
+
+/**
+ * Hook for sound management
+ */
+export function useSound(): [boolean, () => void] {
+  const [isEnabled, setIsEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.SOUND_ENABLED);
+      if (saved !== null) {
+        return JSON.parse(saved);
+      }
+      return true; // Enabled by default
+    } catch {
+      return true;
+    }
+  });
+  
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.SOUND_ENABLED, JSON.stringify(isEnabled));
+  }, [isEnabled]);
+  
+  const toggle = useCallback(() => {
+    setIsEnabled(prev => !prev);
+  }, []);
+  
+  return [isEnabled, toggle];
+}
