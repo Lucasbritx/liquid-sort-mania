@@ -650,26 +650,20 @@ export function getLevelConfig(level: number, mode: GameMode = 'classic'): Level
   }
   
   // Add mechanics progressively starting at level 3
-  // Level 3: Introduce weighted liquids
+  // Level 3: Introduce frozen liquids
   if (level >= 3) {
-    mechanics.weights = true;
-    modifierDensity = 0.12;
-  }
-  
-  // Level 4: Add frozen liquids
-  if (level >= 4) {
     mechanics.frozen = true;
-    modifierDensity = 0.18;
+    modifierDensity = 0.15;
   }
   
-  // Level 5: Add corrupted liquids (not in Zen mode)
-  if (level >= 5 && mode !== 'zen') {
+  // Level 4: Add corrupted liquids (not in Zen mode)
+  if (level >= 4 && mode !== 'zen') {
     mechanics.corrupted = true;
-    modifierDensity = 0.22;
+    modifierDensity = 0.20;
   }
   
-  // Level 6: Add mutable liquids - full mechanics unlocked
-  if (level >= 6) {
+  // Level 5: Add mutable liquids - full mechanics unlocked
+  if (level >= 5) {
     mechanics.mutable = true;
     modifierDensity = 0.25;
   }
