@@ -20,6 +20,7 @@ function App() {
     canUndo,
     animationState,
     selectBottle,
+    pourBottle,
     undo,
     restart,
     nextLevel,
@@ -32,6 +33,10 @@ function App() {
   const handleSelectBottle = useCallback((index: number) => {
     selectBottle(index);
   }, [selectBottle]);
+  
+  const handlePourBottle = useCallback((fromIndex: number, toIndex: number) => {
+    pourBottle(fromIndex, toIndex);
+  }, [pourBottle]);
   
   const handleUndo = useCallback(() => {
     undo();
@@ -72,12 +77,13 @@ function App() {
         selectedIndex={selectedIndex}
         animationState={animationState}
         onSelectBottle={handleSelectBottle}
+        onPourBottle={handlePourBottle}
       />
       
       {/* Instructions footer */}
       <footer className="px-4 py-3 text-center">
         <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          Tap a bottle to select, tap another to pour
+          Tap or drag bottles to pour
         </p>
       </footer>
       

@@ -2,7 +2,7 @@
  * Bottle.tsx
  * 
  * Visual representation of a liquid bottle
- * Handles selection state and pour animations
+ * Handles selection state, pour animations, and drag & drop
  */
 
 import { memo, useMemo } from 'react';
@@ -13,8 +13,10 @@ interface BottleProps {
   bottle: BottleType;
   index: number;
   isSelected: boolean;
+  isDragOver: boolean;
   isPouringOut: boolean;
   isPouringIn: boolean;
+  isDragging: boolean;
   onClick: () => void;
 }
 
@@ -85,8 +87,10 @@ const Bottle = memo(function Bottle({
   bottle,
   index,
   isSelected,
+  isDragOver,
   isPouringOut,
   isPouringIn,
+  isDragging,
   onClick,
 }: BottleProps) {
   // Memoize bottle content to prevent unnecessary re-renders
@@ -104,21 +108,28 @@ const Bottle = memo(function Bottle({
   }, [bottle, index, isPouringOut, isPouringIn]);
   
   return (
-    <button
+    <div
+      data-bottle-index={index}
       onClick={onClick}
       className={`
         relative
         flex flex-col items-center
         transition-transform duration-200 ease-out
         focus:outline-none
-        btn-press
+        cursor-pointer
+        select-none
         ${isSelected ? 'bottle-selected' : ''}
+        ${isDragging ? 'opacity-50 scale-95 z-50' : ''}
+        ${isDragOver ? 'scale-110 brightness-110' : ''}
       `}
       style={{
         width: 'var(--bottle-width)',
         height: 'var(--bottle-height)',
+        touchAction: 'none',
       }}
       aria-label={`Bottle ${index + 1} with ${bottle.length} layers`}
+      role="button"
+      tabIndex={0}
     >
       {/* Bottle neck */}
       <div
@@ -129,6 +140,7 @@ const Bottle = memo(function Bottle({
           border-2 border-white/40 dark:border-white/20
           border-b-0
           rounded-t-lg
+          pointer-events-none
         "
       />
       
@@ -140,6 +152,7 @@ const Bottle = memo(function Bottle({
           flex-1
           w-full
           overflow-hidden
+          pointer-events-none
         "
       >
         {/* Liquid layers */}
@@ -176,7 +189,20 @@ const Bottle = memo(function Bottle({
           "
         />
       )}
-    </button>
+      
+      {/* Drag over indicator */}
+      {isDragOver && (
+        <div
+          className="
+            absolute -inset-2
+            rounded-2xl
+            border-2 border-green-400
+            bg-green-400/20
+            pointer-events-none
+          "
+        />
+      )}
+    </div>
   );
 });
 

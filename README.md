@@ -7,6 +7,7 @@ A production-ready mobile web game inspired by liquid sort puzzle games (like Ma
 ## Features
 
 - **Core Gameplay**: Sort colored liquids into bottles until each bottle contains a single color
+- **Drag & Drop**: Intuitive drag and drop controls for mobile and desktop
 - **Progressive Difficulty**: Levels scale from 4 colors (easy) to 8 colors (challenging)
 - **Undo System**: Unlimited undo with full move history
 - **Move Counter**: Track your efficiency
@@ -46,8 +47,8 @@ npm run preview
 
 ## How to Play
 
-1. **Tap** a bottle to select it (bottle lifts up)
-2. **Tap** another bottle to pour the top liquid
+1. **Tap** a bottle to select it, then tap another to pour
+2. **Drag** a bottle directly onto another to pour (mobile & desktop)
 3. **Valid pours**: Target must have space AND (be empty OR have matching top color)
 4. **Win condition**: Each bottle contains only one color or is empty
 
@@ -56,6 +57,7 @@ npm run preview
 | Action | Description |
 |--------|-------------|
 | Tap bottle | Select/pour |
+| Drag bottle | Drag onto another bottle to pour |
 | Undo button | Reverse last move |
 | Restart button | Reset current level |
 | Sun/Moon icon | Toggle dark mode |

@@ -34,6 +34,7 @@ interface UseGameReturn {
   
   // Actions
   selectBottle: (index: number) => void;
+  pourBottle: (fromIndex: number, toIndex: number) => void;
   undo: () => void;
   restart: () => void;
   nextLevel: () => void;
@@ -183,6 +184,55 @@ export function useGame(): UseGameReturn {
   }, [selectedIndex, gameData, animationState.isAnimating]);
   
   /**
+   * Direct pour from one bottle to another (for drag & drop)
+   */
+  const pourBottle = useCallback((fromIndex: number, toIndex: number) => {
+    // Ignore during animation
+    if (animationState.isAnimating) return;
+    
+    // Ignore if game is won
+    if (gameData.isWin) return;
+    
+    // Validate pour
+    const source = gameData.bottles[fromIndex];
+    const target = gameData.bottles[toIndex];
+    
+    if (!isValidPour(source, target)) return;
+    
+    // Clear any selection
+    setSelectedIndex(null);
+    
+    // Start animation
+    setAnimationState({
+      fromIndex,
+      toIndex,
+      isAnimating: true,
+    });
+    
+    // Execute pour
+    const pourResult = executePour(gameData.bottles, fromIndex, toIndex);
+    if (!pourResult) {
+      setAnimationState({ fromIndex: null, toIndex: null, isAnimating: false });
+      return;
+    }
+    
+    // Update state after animation
+    animationTimeoutRef.current = window.setTimeout(() => {
+      const isWin = checkWin(pourResult.newState);
+      
+      setGameData(prev => ({
+        ...prev,
+        bottles: pourResult.newState,
+        moves: prev.moves + 1,
+        undoStack: [...prev.undoStack, pourResult.move],
+        isWin,
+      }));
+      
+      setAnimationState({ fromIndex: null, toIndex: null, isAnimating: false });
+    }, 350);
+  }, [gameData, animationState.isAnimating]);
+  
+  /**
    * Undo last move
    */
   const undo = useCallback(() => {
@@ -261,6 +311,7 @@ export function useGame(): UseGameReturn {
     canUndo: gameData.undoStack.length > 0,
     animationState,
     selectBottle,
+    pourBottle,
     undo,
     restart,
     nextLevel,
